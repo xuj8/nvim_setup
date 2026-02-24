@@ -3,7 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 APP_NAME="${APP_NAME:-nvim-lean}"
-NVIM_VERSION="${NVIM_VERSION:-v0.10.4}"
+NVIM_VERSION="${NVIM_VERSION:-v0.11.4}"
+FORCE_REINSTALL="${FORCE_REINSTALL:-0}"
 INSTALL_ROOT="${INSTALL_ROOT:-$HOME/.local/opt/nvim-lean}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 CONFIG_ROOT="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -45,6 +46,32 @@ has_fd_binary() {
   fi
 
   return 1
+}
+
+has_python_venv_support() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    return 1
+  fi
+
+  python3 -m venv -h >/dev/null 2>&1 && python3 -m ensurepip --version >/dev/null 2>&1
+}
+
+build_lsp_package_list() {
+  local -a packages=()
+
+  if ! command -v clangd >/dev/null 2>&1; then
+    if command -v unzip >/dev/null 2>&1; then
+      packages+=("clangd")
+    fi
+  fi
+
+  if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+    packages+=("pyright")
+  elif has_python_venv_support; then
+    packages+=("python-lsp-server")
+  fi
+
+  printf '%s\n' "${packages[@]}"
 }
 
 download_archive() {
@@ -100,13 +127,23 @@ download_archive() {
 }
 
 install_nvim() {
-  local tmp_dir archive extract_dir nvim_bin bundle_root version_dir current_link
+  local tmp_dir archive extract_dir nvim_bin bundle_root version_dir current_link staging_dir backup_dir
   tmp_dir="$(mktemp -d)"
 
   archive="$tmp_dir/nvim.tar.gz"
   extract_dir="$tmp_dir/extract"
   version_dir="$INSTALL_ROOT/$NVIM_VERSION"
   current_link="$INSTALL_ROOT/current"
+  staging_dir="$INSTALL_ROOT/.${NVIM_VERSION}.tmp.$$"
+
+  mkdir -p "$INSTALL_ROOT"
+
+  if [ "$FORCE_REINSTALL" != "1" ] && [ -x "$version_dir/bin/nvim" ]; then
+    ln -sfn "$version_dir" "$current_link"
+    log "Neovim ${NVIM_VERSION} already installed; refreshed $current_link"
+    rm -rf "$tmp_dir"
+    return
+  fi
 
   download_archive "$archive" || die "Failed to download Neovim release ${NVIM_VERSION}"
 
@@ -118,9 +155,21 @@ install_nvim() {
 
   bundle_root="$(dirname "$(dirname "$nvim_bin")")"
 
-  mkdir -p "$INSTALL_ROOT"
-  rm -rf "$version_dir"
-  mv "$bundle_root" "$version_dir"
+  rm -rf "$staging_dir"
+  mv "$bundle_root" "$staging_dir"
+  backup_dir="$INSTALL_ROOT/.${NVIM_VERSION}.bak.$$"
+  rm -rf "$backup_dir"
+  if [ -e "$version_dir" ]; then
+    mv "$version_dir" "$backup_dir"
+  fi
+
+  if ! mv "$staging_dir" "$version_dir"; then
+    if [ -e "$backup_dir" ]; then
+      mv "$backup_dir" "$version_dir" || true
+    fi
+    die "Failed to install Neovim release ${NVIM_VERSION}"
+  fi
+  rm -rf "$backup_dir"
   ln -sfn "$version_dir" "$current_link"
 
   log "Installed Neovim to $current_link"
@@ -128,11 +177,27 @@ install_nvim() {
 }
 
 install_config() {
+  local config_parent staging_config backup_config
   [ -d "$CONFIG_SRC" ] || die "Config source not found: $CONFIG_SRC"
 
-  mkdir -p "$(dirname "$CONFIG_DST")"
-  rm -rf "$CONFIG_DST"
-  cp -R "$CONFIG_SRC" "$CONFIG_DST"
+  config_parent="$(dirname "$CONFIG_DST")"
+  mkdir -p "$config_parent"
+  staging_config="$(mktemp -d "$config_parent/.${APP_NAME}.tmp.XXXXXX")"
+  cp -R "$CONFIG_SRC"/. "$staging_config"/
+
+  backup_config="$config_parent/.${APP_NAME}.bak.$$"
+  rm -rf "$backup_config"
+  if [ -e "$CONFIG_DST" ]; then
+    mv "$CONFIG_DST" "$backup_config"
+  fi
+
+  if ! mv "$staging_config" "$CONFIG_DST"; then
+    if [ -e "$backup_config" ]; then
+      mv "$backup_config" "$CONFIG_DST" || true
+    fi
+    die "Failed to install config at $CONFIG_DST"
+  fi
+  rm -rf "$backup_config"
 
   log "Installed config at $CONFIG_DST"
 }
@@ -183,6 +248,27 @@ sync_plugins() {
   fi
 }
 
+sync_lsp_servers() {
+  local nvim_bin="$INSTALL_ROOT/current/bin/nvim"
+  local -a lsp_packages
+
+  if [ ! -x "$nvim_bin" ]; then
+    warn "Skipping LSP install: nvim binary missing"
+    return
+  fi
+
+  mapfile -t lsp_packages < <(build_lsp_package_list)
+  if [ "${#lsp_packages[@]}" -eq 0 ]; then
+    warn "Skipping LSP install: no package candidates"
+    return
+  fi
+
+  log "Installing LSP servers with Mason: ${lsp_packages[*]}"
+  if ! NVIM_APPNAME="$APP_NAME" "$nvim_bin" --headless "+MasonInstall ${lsp_packages[*]}" +qa >/dev/null 2>&1; then
+    warn "LSP install failed. Run manually later: NVIM_APPNAME=$APP_NAME $nvim_bin +MasonInstall ${lsp_packages[*]}"
+  fi
+}
+
 main() {
   need_cmd curl
   need_cmd tar
@@ -190,6 +276,17 @@ main() {
 
   warn_if_missing xclip "xclip not found; clipboard integration on Linux may fail."
   warn_if_missing rg "rg not found; Telescope fallback find command may fail."
+  warn_if_missing jupytext "jupytext not found; .ipynb support in Neovim will not work until installed."
+  if ! command -v clangd >/dev/null 2>&1 && ! command -v unzip >/dev/null 2>&1; then
+    warn "clangd not found and unzip missing; Mason cannot install clangd automatically."
+  fi
+  if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+    warn "node/npm not found; Python LSP fallback requires python3 with venv+ensurepip support."
+  fi
+  warn_if_missing python3 "python3 not found; Python LSP setup may be skipped."
+  if command -v python3 >/dev/null 2>&1 && ! has_python_venv_support; then
+    warn "python3 is missing venv/ensurepip; Mason cannot install Python-based LSP servers."
+  fi
   if ! has_fd_binary; then
     warn "fd/fdfind not found; file search will use 'rg --files' fallback."
   fi
@@ -198,6 +295,7 @@ main() {
   install_config
   install_launcher
   sync_plugins
+  sync_lsp_servers
 
   cat <<SUMMARY
 
