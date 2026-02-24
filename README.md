@@ -92,7 +92,7 @@ nv
 - `.ipynb` support uses `GCBallesteros/jupytext.nvim`.
 - Notebook execution uses `benlubas/molten-nvim`.
 - Molten output is configured to appear as inline virtual text by default.
-- This setup prefers Neovim Python host from active `VIRTUAL_ENV`, then falls back to `./.venv/bin/python` (from Neovim launch directory), and prepends that venv `bin` path to `PATH`.
+- This setup prefers Neovim Python host from active `VIRTUAL_ENV`, then falls back to `./.venv_3_13/bin/python` (from Neovim launch directory), and prepends that venv `bin` path to `PATH`.
 
 ## External dependencies
 - Installed by `./setup.sh`:

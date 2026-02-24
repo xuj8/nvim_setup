@@ -248,6 +248,20 @@ sync_plugins() {
   fi
 }
 
+sync_remote_plugins() {
+  local nvim_bin="$INSTALL_ROOT/current/bin/nvim"
+
+  if [ ! -x "$nvim_bin" ]; then
+    warn "Skipping remote plugin registration: nvim binary missing"
+    return
+  fi
+
+  log "Registering remote plugins (UpdateRemotePlugins)..."
+  if ! NVIM_APPNAME="$APP_NAME" "$nvim_bin" --headless "+Lazy! load molten-nvim" "+UpdateRemotePlugins" +qa >/dev/null 2>&1; then
+    warn "Remote plugin registration failed. Run manually later: NVIM_APPNAME=$APP_NAME $nvim_bin '+Lazy! load molten-nvim' +UpdateRemotePlugins"
+  fi
+}
+
 sync_lsp_servers() {
   local nvim_bin="$INSTALL_ROOT/current/bin/nvim"
   local -a lsp_packages
@@ -295,6 +309,7 @@ main() {
   install_config
   install_launcher
   sync_plugins
+  sync_remote_plugins
   sync_lsp_servers
 
   cat <<SUMMARY
