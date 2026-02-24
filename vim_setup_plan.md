@@ -29,7 +29,7 @@ Maintain a reproducible Neovim profile that covers daily coding, navigation, and
 5. Notebook support
 - `.ipynb` text editing via `jupytext.nvim`.
 - Kernel execution via `molten-nvim` with virtual-text output enabled.
-- Neovim Python provider prefers `/home/jack/mono/.venv/bin/python` when present.
+- Neovim Python provider prefers active `VIRTUAL_ENV`, then `./.venv/bin/python`.
 
 ## Follow-up backlog
 1. Optional image output support for molten (`image.nvim` or `wezterm` provider) if inline plots become a priority.

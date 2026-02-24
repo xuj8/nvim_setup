@@ -43,7 +43,7 @@ Ship a reproducible Neovim profile that does not depend on system Neovim, can be
 - `.ipynb` open/edit support through `jupytext.nvim` + `jupytext` CLI.
 - In-editor code execution via `molten-nvim`.
 - Default output mode includes virtual text (`molten_virt_text_output=true`).
-- Python host should prefer `/home/jack/mono/.venv/bin/python` when present.
+- Python host should prefer active `VIRTUAL_ENV`, then `./.venv/bin/python`.
 
 ## Plugin surface
 - `lazy.nvim`

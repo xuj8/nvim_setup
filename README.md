@@ -92,7 +92,7 @@ nv
 - `.ipynb` support uses `GCBallesteros/jupytext.nvim`.
 - Notebook execution uses `benlubas/molten-nvim`.
 - Molten output is configured to appear as inline virtual text by default.
-- This setup pins Neovim's Python provider to `/home/jack/mono/.venv/bin/python` when that path exists, and prepends `/home/jack/mono/.venv/bin` to `PATH` inside Neovim.
+- This setup prefers Neovim Python host from active `VIRTUAL_ENV`, then falls back to `./.venv/bin/python` (from Neovim launch directory), and prepends that venv `bin` path to `PATH`.
 
 ## External dependencies
 - Installed by `./setup.sh`:
@@ -107,11 +107,10 @@ nv
 - Notebook/runtime pieces not installed by `./setup.sh`:
   - `jupytext` CLI must be on `PATH` for `.ipynb` conversion
   - Python packages in Neovim host environment: `pynvim`, `jupyter_client` (`nbformat` if using import/export)
-  - In this mono repo, preferred install path is:
+  - Example manual install:
     ```bash
-    /home/jack/mono/src/ci/misc/sync_venv.sh
+    python3 -m pip install --user jupytext pynvim jupyter_client nbformat
     ```
-    This script expects `uv` and installs from `src/ci/config/requirements.in`.
 - Optional (not enabled by default):
   - image rendering providers for molten (`image.nvim` or `wezterm.nvim` + their external deps)
 
