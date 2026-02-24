@@ -14,7 +14,7 @@
 
 ## Install
 ```bash
-cd /home/jack/mono/snippets/2026-02-17
+# from this repo root
 ./setup.sh
 ```
 
@@ -92,11 +92,28 @@ nv
 - `.ipynb` support uses `GCBallesteros/jupytext.nvim`.
 - Notebook execution uses `benlubas/molten-nvim`.
 - Molten output is configured to appear as inline virtual text by default.
-- This setup pins Neovim's Python provider to `/home/jack/mono/.venv/bin/python` (when present) and prepends `/home/jack/mono/.venv/bin` to `PATH` inside Neovim.
-- Keep notebook deps synced through centralized requirements:
-  ```bash
-  /home/jack/mono/src/ci/misc/sync_venv.sh
-  ```
+- This setup pins Neovim's Python provider to `/home/jack/mono/.venv/bin/python` when that path exists, and prepends `/home/jack/mono/.venv/bin` to `PATH` inside Neovim.
+
+## External dependencies
+- Installed by `./setup.sh`:
+  - pinned Neovim binary (`NVIM_VERSION`, default `v0.11.4`)
+  - plugins via `lazy.nvim`
+  - Mason LSP servers when possible (`pyright` if `node`/`npm` exist, `clangd` if needed and `unzip` exists)
+- Must already exist on the system for `./setup.sh`:
+  - required: `curl`, `tar`, `git`
+  - strongly recommended: `rg`
+  - optional but recommended: `fd` or `fdfind`
+  - Linux clipboard support: `xclip`
+- Notebook/runtime pieces not installed by `./setup.sh`:
+  - `jupytext` CLI must be on `PATH` for `.ipynb` conversion
+  - Python packages in Neovim host environment: `pynvim`, `jupyter_client` (`nbformat` if using import/export)
+  - In this mono repo, preferred install path is:
+    ```bash
+    /home/jack/mono/src/ci/misc/sync_venv.sh
+    ```
+    This script expects `uv` and installs from `src/ci/config/requirements.in`.
+- Optional (not enabled by default):
+  - image rendering providers for molten (`image.nvim` or `wezterm.nvim` + their external deps)
 
 ## Optional knobs
 - Override version: `NVIM_VERSION=v0.11.4 ./setup.sh`
