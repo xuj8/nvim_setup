@@ -291,6 +291,12 @@ main() {
   warn_if_missing xclip "xclip not found; clipboard integration on Linux may fail."
   warn_if_missing rg "rg not found; Telescope fallback find command may fail."
   warn_if_missing jupytext "jupytext not found; .ipynb support in Neovim will not work until installed."
+  if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
+    warn "ImageMagick CLI not found; Molten image/plot rendering may fail until installed."
+  fi
+  if [ "${NVIM_IMAGE_BACKEND:-kitty}" = "ueberzug" ] && ! command -v ueberzugpp >/dev/null 2>&1; then
+    warn "NVIM_IMAGE_BACKEND=ueberzug is set but ueberzugpp is missing."
+  fi
   if ! command -v clangd >/dev/null 2>&1 && ! command -v unzip >/dev/null 2>&1; then
     warn "clangd not found and unzip missing; Mason cannot install clangd automatically."
   fi

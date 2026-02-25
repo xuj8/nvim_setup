@@ -3,6 +3,9 @@ return {
   event = "VeryLazy",
   config = function()
     local tabline = require("tabby.tabline")
+    local molten_spinner = require("config.molten_spinner")
+
+    molten_spinner.setup()
 
     _G.NvLeanTabNewClick = function(_, clicks, button, modifiers)
       local mods = (modifiers or ""):gsub("%s+", "")
@@ -27,6 +30,12 @@ return {
           }
         end),
         line.spacer(),
+        {
+          function()
+            return molten_spinner.status_text()
+          end,
+          hl = "TabLineSel",
+        },
         {
           "%@v:lua.NvLeanTabNewClick@",
           " + ",

@@ -111,8 +111,29 @@ return {
             vim.keymap.set("n", lhs, rhs, { buffer = args.buf, silent = true, desc = desc })
           end
 
+          local definitions_picker = function()
+            local ok, builtin = pcall(require, "telescope.builtin")
+            if ok then
+              builtin.lsp_definitions()
+              return
+            end
+            vim.lsp.buf.definition()
+          end
+
+          local switch_source_header = function()
+            if vim.fn.exists(":ClangdSwitchSourceHeader") == 2 then
+              vim.cmd("ClangdSwitchSourceHeader")
+              return
+            end
+            vim.notify("Clangd source/header switch is not available in this buffer", vim.log.levels.WARN)
+          end
+
           map("gd", vim.lsp.buf.definition, "LSP: Go to definition")
+          map("gD", vim.lsp.buf.declaration, "LSP: Go to declaration")
+          map("gI", vim.lsp.buf.implementation, "LSP: Go to implementation")
           map("gR", vim.lsp.buf.references, "LSP: References")
+          map("<leader>sd", definitions_picker, "LSP: Definitions picker")
+          map("<leader>cs", switch_source_header, "C/C++: Switch source/header")
           map("K", vim.lsp.buf.hover, "LSP: Hover")
           map("<leader>rn", vim.lsp.buf.rename, "LSP: Rename")
           map("<leader>ca", vim.lsp.buf.code_action, "LSP: Code action")
