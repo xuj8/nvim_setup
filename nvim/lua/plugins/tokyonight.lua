@@ -54,6 +54,9 @@ return {
     on_highlights = function(hl, c)
       hl.Normal = { fg = "#FFFFFF", bg = "#000000" }
       hl.NormalNC = { fg = "#FFFFFF", bg = "#000000" }
+      hl.WinSeparator = { fg = "#5A5A5A", bg = "#000000", bold = true }
+      hl.VertSplit = { fg = "#5A5A5A", bg = "#000000", bold = true }
+      hl.NvimTreeWinSeparator = { fg = "#5A5A5A", bg = "#000000", bold = true }
       hl.CursorLine = { bg = "#111111" }
       hl.ColorColumn = { bg = "#0E0E0E" }
       hl.Visual = { bg = "#1A294A" }

@@ -4,7 +4,16 @@ return {
   opts = function()
     local backend = vim.env.NVIM_IMAGE_BACKEND
     if backend == nil or backend == "" then
-      backend = "kitty"
+      if vim.env.KITTY_PID or vim.env.KITTY_WINDOW_ID then
+        backend = "kitty"
+      elseif string.find(vim.env.TERM or "", "kitty", 1, true) then
+        backend = "kitty"
+      elseif vim.fn.executable("ueberzug") == 1 then
+        backend = "ueberzug"
+      else
+        -- Won't be used when plugin is disabled; keeps opts structurally valid.
+        backend = "kitty"
+      end
     end
 
     return {

@@ -226,9 +226,9 @@ return {
 
     vim.keymap.set("n", "<C-p>", find_files, { desc = "Find files (VS Code style)" })
     vim.keymap.set("n", "<leader>fg", live_grep_project, { desc = "Search in files" })
-    vim.keymap.set("n", "<leader>sf", live_grep_project, { desc = "Project text search (uses saved include/exclude globs)" })
-    vim.keymap.set("n", "<leader>sF", live_grep_with_filters, { desc = "Project text search with include/exclude globs" })
-    vim.keymap.set("n", "<leader>sR", clear_live_grep_filters, { desc = "Clear project search include/exclude globs" })
-    vim.keymap.set("n", "<leader>sw", builtin.grep_string, { desc = "Search word under cursor in project" })
+    vim.keymap.set("n", "<leader>sg", live_grep_project, { desc = "Project text search (Telescope, saved include/exclude globs)" })
+    vim.keymap.set("n", "<leader>sG", live_grep_with_filters, { desc = "Project text search with include/exclude globs (Telescope)" })
+    vim.keymap.set("n", "<leader>sC", clear_live_grep_filters, { desc = "Clear project search include/exclude globs (Telescope)" })
+    vim.keymap.set("n", "<leader>sW", builtin.grep_string, { desc = "Search word under cursor in project (Telescope)" })
   end,
 }

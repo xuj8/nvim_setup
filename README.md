@@ -54,13 +54,17 @@ nv
 - `<leader>ya`: copy current file absolute path
 - `<leader>yr`: copy current file path relative to project root (`cwd`)
 - `<leader>yn`: copy current file name
-- `<leader>mi`: Molten init kernel
-- `<leader>ml`: Molten evaluate current line
-- Visual `<leader>mv`: Molten evaluate selected code
-- `<leader>mo`: Molten open output window
-- `<leader>mh`: Molten hide output window
-- `<leader>mx`: Molten interrupt kernel
-- `<leader>mr`: Molten restart kernel
+- `<leader>mi`: notebook kernel init (if up to 9 kernels are available, choose with one digit, no Enter)
+- `<leader>mc`: run current notebook cell
+- `<leader>ma`: run current cell and above
+- `<leader>mA`: run all notebook cells
+- `<leader>ml`: run current line
+- Visual `<leader>mv`: run selected code
+- `<leader>mn` / `<leader>mp`: next / previous notebook cell
+- `<leader>mo` / `<leader>mh`: open / hide output window
+- `<leader>mE` / `<leader>mI`: export / import outputs to/from `.ipynb`
+- `<leader>mx`: interrupt kernel
+- `<leader>mr`: restart kernel
 - `gd`: LSP go to definition
 - `gD`: LSP go to declaration
 - `gI`: LSP go to implementation (useful for C++ header -> `.cpp` body jumps)
@@ -105,24 +109,33 @@ nv
 ## File explorer path copy options
 - In NvimTree (`Space e`), right-click a node to open copy actions:
   absolute path, relative path, file name, create directory, rename, delete file, delete directory.
-- Copy actions are silent (no extra confirmation prompt after selecting from the menu).
+- Right-click menu selection is immediate: press `1`-`7` to execute an action directly (no extra Enter).
 - Delete actions use an extra two-step confirmation before removal.
 - NvimTree opens by default when `nv` starts.
 - If NvimTree is the only remaining window, `:q` exits Neovim (no second `:q` needed).
+- When command-line focus is in NvimTree, `:q`/`:q!` are treated as `:qall`/`:qall!` to avoid double-quit behavior.
 - Keyboard options in NvimTree:
-  - `gy`: copy absolute path
-  - `Y`: copy relative path
-  - `y`: copy file name
-  - `gD`: create directory under the selected node
-- If you connect from a terminal without Nerd Font support and see `?`/box icons:
-  - launch with `NVIM_NO_NERD_FONT=1 nv` for plain-text tree glyphs.
-  - or install/select a Nerd Font on the client terminal (recommended for full icons).
+  - `<Space> f a`: copy absolute path
+  - `<Space> f r`: copy relative path
+  - `<Space> f n`: copy file name
+  - `<Space> f d`: create directory under the selected node
+  - `<Space> f R`: rename selected file/directory
+  - `<Space> f x`: delete selected file (with extra confirmation)
+  - `<Space> f X`: delete selected directory (with extra confirmation)
+  - `<Space> f m`: open the right-click action menu from keyboard
+  - `<Space> f p`: alias for the same action menu
 
 ## Notebook support
 - `.ipynb` support uses `GCBallesteros/jupytext.nvim`.
+- `.ipynb` files open as markdown-style notebook text (`jupytext` markdown mode), which is compatible with Quarto workflows.
+- `quarto-dev/quarto-nvim` is enabled for markdown/quarto buffers.
 - Notebook execution uses `benlubas/molten-nvim`.
 - Molten output is configured to appear as inline virtual text by default.
 - Molten image output is enabled via `image.nvim` (`g:molten_image_provider = "image.nvim"`).
+- Notebook outputs are exported back into the `.ipynb` on save (`MoltenExportOutput!`) when Molten is initialized.
+- Auto-import on notebook open is disabled by default; opt in with:
+  - `:let g:notebook_auto_import_outputs = v:true` (current session)
+  - `vim.g.notebook_auto_import_outputs = true` in config (persisted)
 - While code is executing, the tabline shows a `Molten` spinner on the right side.
 - Image backend defaults to `kitty`; override with `NVIM_IMAGE_BACKEND=kitty|ueberzug|sixel`.
 - This setup prefers Neovim Python host from active `VIRTUAL_ENV`, then falls back to `./.venv_3_13/bin/python` (from Neovim launch directory), and prepends that venv `bin` path to `PATH`.
@@ -140,6 +153,7 @@ nv
 - Notebook/runtime pieces not installed by `./setup.sh`:
   - `jupytext` CLI must be on `PATH` for `.ipynb` conversion
   - Python packages in Neovim host environment: `pynvim`, `jupyter_client` (`nbformat` if using import/export)
+  - optional for full Quarto CLI workflows (`quarto` conversion/render commands): `quarto` binary on `PATH`
   - For notebook images/plots in Neovim:
     - `ImageMagick` CLI installed and available on `PATH` (used by `image.nvim` with `processor = "magick_cli"`)
     - Install examples:
@@ -150,9 +164,6 @@ nv
     ```bash
     python3 -m pip install --user jupytext pynvim jupyter_client nbformat
     ```
-- Optional:
-  - Nerd Font in your terminal profile (required for icon glyphs in NvimTree/statusline/CLI tools)
-
 ## Optional knobs
 - Override version: `NVIM_VERSION=v0.11.4 ./setup.sh`
 - Override profile name: `APP_NAME=nvim-lean ./setup.sh`

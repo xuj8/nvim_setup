@@ -36,65 +36,62 @@ local function node_base_dir(node)
 end
 
 local function nvim_tree_icon_config()
-  if vim.env.NVIM_NO_NERD_FONT == "1" then
-    return {
-      show = {
-        file = false,
-        folder = true,
-        folder_arrow = false,
-        git = false,
-        modified = false,
-        diagnostics = false,
-        bookmarks = false,
-      },
-      glyphs = {
-        folder = {
-          default = "[D]",
-          open = "[O]",
-          empty = "[D]",
-          empty_open = "[O]",
-          symlink = "[L]",
-          symlink_open = "[L]",
-          arrow_open = "v",
-          arrow_closed = ">",
-        },
-      },
-    }
-  end
-
   return {
     show = {
-      file = true,
+      file = false,
       folder = true,
       folder_arrow = true,
-      git = true,
-      modified = true,
-      diagnostics = true,
-      bookmarks = true,
+      git = false,
+      modified = false,
+      diagnostics = false,
+      bookmarks = false,
+    },
+    glyphs = {
+      folder = {
+        default = "[D]",
+        open = "[O]",
+        empty = "[D]",
+        empty_open = "[O]",
+        symlink = "[L]",
+        symlink_open = "[L]",
+        arrow_open = "v",
+        arrow_closed = ">",
+      },
     },
   }
 end
 
 local function setup_nvim_tree_auto_quit()
+  local function maybe_quit_if_only_tree()
+    if #vim.api.nvim_list_uis() == 0 then
+      return
+    end
+
+    local normal_wins = {}
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      local cfg = vim.api.nvim_win_get_config(win)
+      if cfg.relative == "" then
+        table.insert(normal_wins, win)
+      end
+    end
+
+    if #normal_wins ~= 1 then
+      return
+    end
+
+    local buf = vim.api.nvim_win_get_buf(normal_wins[1])
+    local filetype = vim.api.nvim_get_option_value("filetype", { buf = buf })
+    if filetype == "NvimTree" then
+      pcall(vim.cmd, "quitall")
+    end
+  end
+
   local group = vim.api.nvim_create_augroup("nvim-tree-auto-quit", { clear = true })
-  vim.api.nvim_create_autocmd("BufEnter", {
+  vim.api.nvim_create_autocmd({ "BufEnter", "WinClosed" }, {
     group = group,
     nested = true,
     callback = function()
-      if #vim.api.nvim_list_uis() == 0 then
-        return
-      end
-
-      local wins = vim.api.nvim_tabpage_list_wins(0)
-      if #wins ~= 1 then
-        return
-      end
-
-      local buf = vim.api.nvim_win_get_buf(wins[1])
-      local filetype = vim.api.nvim_get_option_value("filetype", { buf = buf })
-      if filetype == "NvimTree" then
-        vim.cmd("quit")
-      end
+      vim.schedule(maybe_quit_if_only_tree)
     end,
   })
 end
@@ -117,6 +114,13 @@ local function setup_nvim_tree_auto_open()
       end
     end,
   })
+end
+
+local function setup_nvim_tree_quit_abbrev()
+  vim.cmd([[
+    cnoreabbrev <expr> q (getcmdtype() ==# ':' && getcmdline() ==# 'q' && &filetype ==# 'NvimTree') ? 'qall' : 'q'
+    cnoreabbrev <expr> q! (getcmdtype() ==# ':' && getcmdline() ==# 'q!' && &filetype ==# 'NvimTree') ? 'qall!' : 'q!'
+  ]])
 end
 
 local function attach_custom_mappings(bufnr)
@@ -319,61 +323,83 @@ local function attach_custom_mappings(bufnr)
       { label = "Delete directory (with confirm)", kind = "delete_directory", value = "" },
     }
 
-    vim.ui.select(choices, {
-      prompt = "nvim-tree actions",
-      format_item = function(item)
-        return item.label
-      end,
-    }, function(choice)
-      if not choice then
-        return
-      end
-      if choice.kind == "mkdir" then
-        create_directory_under_cursor()
-        return
-      end
-      if choice.kind == "rename" then
-        rename_node_under_cursor()
-        return
-      end
-      if choice.kind == "delete_file" then
-        delete_node_with_confirm("file")
-        return
-      end
-      if choice.kind == "delete_directory" then
-        delete_node_with_confirm("directory")
-        return
-      end
-      copy_to_clipboard(choice.label:lower(), choice.value)
-    end)
+    local lines = { "nvim-tree actions (press one key):" }
+    for index, item in ipairs(choices) do
+      table.insert(lines, string.format("%d. %s", index, item.label))
+    end
+    table.insert(lines, "q. Cancel")
+
+    vim.api.nvim_echo({ { table.concat(lines, "\n") } }, false, {})
+    local ok, key = pcall(vim.fn.getcharstr)
+    vim.cmd("echo")
+    if not ok or key == nil or key == "" then
+      return
+    end
+    if key == "q" or key == "Q" or key == "\027" then
+      return
+    end
+
+    local index = tonumber(key)
+    local choice = index and choices[index] or nil
+    if not choice then
+      vim.notify("Invalid selection: " .. key, vim.log.levels.WARN)
+      return
+    end
+
+    if choice.kind == "mkdir" then
+      create_directory_under_cursor()
+      return
+    end
+    if choice.kind == "rename" then
+      rename_node_under_cursor()
+      return
+    end
+    if choice.kind == "delete_file" then
+      delete_node_with_confirm("file")
+      return
+    end
+    if choice.kind == "delete_directory" then
+      delete_node_with_confirm("directory")
+      return
+    end
+    copy_to_clipboard(choice.label:lower(), choice.value)
   end
 
-  vim.keymap.set("n", "gy", function()
+  vim.keymap.set("n", "<leader>fa", function()
     copy_node_path("absolute")
   end, opts("Copy absolute path"))
-  vim.keymap.set("n", "Y", function()
+  vim.keymap.set("n", "<leader>fr", function()
     copy_node_path("relative")
   end, opts("Copy relative path"))
-  vim.keymap.set("n", "y", function()
+  vim.keymap.set("n", "<leader>fn", function()
     copy_node_path("name")
   end, opts("Copy file name"))
-  vim.keymap.set("n", "gD", create_directory_under_cursor, opts("Create directory"))
+  vim.keymap.set("n", "<leader>fd", create_directory_under_cursor, opts("Create directory"))
+  vim.keymap.set("n", "<leader>fR", rename_node_under_cursor, opts("Rename"))
+  vim.keymap.set("n", "<leader>fx", function()
+    delete_node_with_confirm("file")
+  end, opts("Delete file (with confirm)"))
+  vim.keymap.set("n", "<leader>fX", function()
+    delete_node_with_confirm("directory")
+  end, opts("Delete directory (with confirm)"))
+  vim.keymap.set("n", "<leader>fm", show_path_menu, opts("Open actions menu"))
+  vim.keymap.set("n", "<leader>fp", show_path_menu, opts("Open actions menu (popup)"))
   vim.keymap.set("n", "<RightMouse>", show_path_menu, opts("Open copy-path menu"))
   vim.keymap.set("n", "<2-RightMouse>", show_path_menu, opts("Open copy-path menu"))
 end
 
 return {
   "nvim-tree/nvim-tree.lua",
-  dependencies = {
-    "nvim-tree/nvim-web-devicons",
-  },
   config = function()
     require("nvim-tree").setup({
       sort_by = "case_sensitive",
       on_attach = attach_custom_mappings,
       view = {
         side = "left",
-        width = 36,
+        width = {
+          min = 20,
+          max = 80,
+        },
       },
       renderer = {
         group_empty = true,
@@ -389,6 +415,7 @@ return {
 
     setup_nvim_tree_auto_quit()
     setup_nvim_tree_auto_open()
+    setup_nvim_tree_quit_abbrev()
 
     vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
     vim.keymap.set("n", "<C-b>", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file explorer (VS Code style)" })
